@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Finger Tapping Test · 손가락 두드리기 10초 검사</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #121821;
+    --panel-2: #18202b;
+    --line: #243040;
+    --text: #e6edf3;
+    --muted: #8b98a9;
+    --accent: #2dd4bf;
+    --accent-2: #38bdf8;
+    --s0: #34d399;
+    --s1: #a3e635;
+    --s2: #facc15;
+    --s3: #fb923c;
+    --s4: #f87171;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; min-height: 100vh;
+  }
+  button, select { font-family: inherit; }
+
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 28px; border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #0f151d 0%, var(--bg) 100%);
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand-mark {
+    width: 34px; height: 34px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    display: grid; place-items: center; font-weight: 800; color: #04201d; font-size: 14px;
+  }
+  .brand h1 { font-size: 17px; font-weight: 700; letter-spacing: -0.2px; }
+  .brand p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .live-chip {
+    display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted);
+    padding: 6px 12px; border: 1px solid var(--line); border-radius: 999px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #4b5563; }
+  .dot.on { background: var(--s0); box-shadow: 0 0 10px var(--s0); }
+  .dot.rec { background: var(--s4); box-shadow: 0 0 10px var(--s4); animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0.35; } }
+
+  main {
+    flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) 420px;
+    gap: 22px; padding: 22px 28px; align-items: start;
+  }
+  @media (max-width: 1050px) { main { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+  .card-title {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--muted); font-weight: 600; letter-spacing: 0.4px; margin-bottom: 12px;
+  }
+
+  /* ---------- Camera ---------- */
+  .hand-status {
+    font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
+    background: #1f2937; color: var(--muted); border: 1px solid var(--line);
+  }
+  .hand-status.found { background: rgba(52,211,153,0.12); color: var(--s0); border-color: rgba(52,211,153,0.4); }
+  .hand-status.lost { background: rgba(251,146,60,0.12); color: var(--s3); border-color: rgba(251,146,60,0.4); }
+  .video-frame {
+    position: relative; width: 100%; aspect-ratio: 16 / 10; background: #05080c;
+    border-radius: 10px; overflow: hidden; display: grid; place-items: center;
+  }
+  .mirror { position: absolute; inset: 0; transform: scaleX(-1); }
+  .mirror video, .mirror canvas { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .placeholder { position: relative; z-index: 2; text-align: center; color: var(--muted); font-size: 14px; line-height: 1.7; padding: 20px; }
+  .placeholder .big { font-size: 40px; margin-bottom: 8px; }
+
+  .overlay { position: absolute; inset: 0; z-index: 4; display: none; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none; background: rgba(5,8,12,0.55); }
+  .overlay.show { display: flex; }
+  .cd-num { font-size: 120px; font-weight: 900; line-height: 1; color: #fff; text-shadow: 0 6px 30px rgba(0,0,0,0.6); }
+  .cd-msg { margin-top: 14px; font-size: 18px; font-weight: 700; color: #fff; text-align: center; padding: 0 16px; text-shadow: 0 2px 10px rgba(0,0,0,0.7); }
+  .rec-timer, .rec-count {
+    position: absolute; top: 14px; z-index: 4; display: none;
+    font-weight: 800; padding: 7px 13px; border-radius: 999px;
+  }
+  .rec-timer { right: 14px; background: rgba(248,113,113,0.92); color: #2a0606; font-size: 14px; }
+  .rec-count { left: 14px; background: rgba(5,8,12,0.8); color: #fff; font-size: 15px; border: 1px solid #334155; }
+  .rec-count b { font-size: 22px; color: var(--accent); margin-right: 2px; }
+  .rec-timer.show, .rec-count.show { display: block; }
+  .rec-bar { position: absolute; left: 0; right: 0; bottom: 0; height: 6px; background: rgba(255,255,255,0.12); display: none; z-index: 4; }
+  .rec-bar.show { display: block; }
+  .rec-bar-fill { height: 100%; width: 0%; background: var(--s4); }
+  .rec-hint {
+    position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: rgba(5,8,12,0.78); color: #fff; font-size: 14px; font-weight: 600;
+    padding: 8px 14px; border-radius: 10px; display: none; z-index: 4; white-space: nowrap;
+  }
+  .rec-hint.show { display: block; }
+  .stage-foot { display: flex; gap: 18px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  .stage-foot b { color: var(--text); font-weight: 600; }
+
+  /* ---------- Charts ---------- */
+  .chart-block + .chart-block { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px; }
+  .chart-head h3 { font-size: 14px; font-weight: 700; }
+  .chart-head .verdict { font-size: 13px; font-weight: 700; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .legend i { display: inline-block; width: 12px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+  .legend i.dotm { width: 8px; height: 8px; border-radius: 50%; }
+  .legend i.dash { background: repeating-linear-gradient(90deg, #facc15 0 4px, transparent 4px 7px) !important; }
+  .chart { width: 100%; height: 200px; display: block; }
+  .chart.small { height: 170px; }
+  .chart-note { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+
+  /* ---------- Status & buttons ---------- */
+  .loader-row { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+  .spinner { width: 20px; height: 20px; border: 3px solid #263241; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0; }
+  .spinner.hidden, .status-icon.hidden { display: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-icon { font-size: 18px; flex-shrink: 0; }
+  .status-text.ok { color: var(--s0); }
+  .status-text.err { color: var(--s4); }
+  .err-detail {
+    margin-top: 10px; font-size: 12px; line-height: 1.6; color: #fca5a5;
+    background: rgba(248,113,113,0.08); border: 1px solid rgba(248,113,113,0.25);
+    border-radius: 8px; padding: 10px 12px; display: none; white-space: pre-line;
+  }
+  .err-detail.show { display: block; }
+  .btn {
+    width: 100%; border: none; border-radius: 10px; padding: 13px 16px; font-size: 15px; font-weight: 700;
+    cursor: pointer; transition: transform 0.05s ease, filter 0.15s ease, background 0.15s ease;
+  }
+  .btn:active:not(:disabled) { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #03201c; }
+  .btn-primary:hover:not(:disabled) { filter: brightness(1.08); }
+  .btn-primary.stop { background: #374151; color: var(--text); }
+  .btn-test { background: #f8fafc; color: #0b0f14; font-size: 16px; padding: 15px; }
+  .btn-test:hover:not(:disabled) { filter: brightness(0.92); }
+  .btn-test.cancel { background: #374151; color: var(--text); }
+
+  /* ---------- Live ---------- */
+  .live-row { display: flex; align-items: baseline; gap: 10px; font-variant-numeric: tabular-nums; }
+  .live-row .num { font-size: 40px; font-weight: 800; letter-spacing: -1px; }
+  .live-row .sub { font-size: 13px; color: var(--muted); }
+  .live-bar { height: 10px; border-radius: 999px; background: #0d131a; border: 1px solid var(--line); margin-top: 10px; overflow: hidden; }
+  .live-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), var(--accent-2)); transition: width 0.06s linear; }
+  .live-note { font-size: 12px; color: var(--muted); margin-top: 8px; line-height: 1.6; }
+
+  /* ---------- Test ---------- */
+  .steps { list-style: none; counter-reset: s; display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+  .steps li { counter-increment: s; position: relative; padding-left: 30px; font-size: 13px; line-height: 1.55; color: #cbd5e1; }
+  .steps li b { color: var(--text); }
+  .steps li::before {
+    content: counter(s); position: absolute; left: 0; top: 0; width: 21px; height: 21px; border-radius: 50%;
+    background: var(--panel-2); border: 1px solid var(--line); font-size: 11px; font-weight: 700; color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .field-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+  .field-row select { flex: 1; background: var(--panel-2); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+  .test-msg { font-size: 12px; color: var(--muted); margin-top: 8px; text-align: center; min-height: 16px; line-height: 1.5; }
+  .test-msg.warn { color: var(--s3); }
+
+  /* ---------- Result ---------- */
+  #resultCard { display: none; border-width: 2px; }
+  #resultCard.show { display: block; }
+  .res-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .res-main .cap { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .res-main .num { font-size: 54px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .res-main .num small { font-size: 18px; font-weight: 700; color: var(--muted); margin-left: 4px; letter-spacing: 0; }
+  .res-main .sub { font-size: 14px; color: #cbd5e1; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .res-main .sub b { color: var(--text); }
+  .grade-pill { text-align: center; padding: 10px 14px; border-radius: 14px; color: #0b0f14; min-width: 112px; }
+  .grade-pill .g { font-size: 11px; font-weight: 700; opacity: 0.8; }
+  .grade-pill .l { font-size: 17px; font-weight: 900; margin-top: 2px; white-space: nowrap; }
+  .res-desc { font-size: 14px; line-height: 1.7; margin-top: 14px; color: #dbe3ec; }
+  .res-desc b { color: var(--text); }
+  .grade-scale { display: flex; gap: 4px; margin-top: 12px; }
+  .grade-scale div { flex: 1; text-align: center; font-size: 11px; padding: 6px 2px; border-radius: 6px; background: var(--panel-2); color: var(--muted); line-height: 1.35; }
+  .grade-scale div.on { color: #0b0f14; font-weight: 800; }
+
+  .comp { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .comp-row { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 10px 12px; font-size: 13px; }
+  .comp-row + .comp-row { border-top: 1px solid var(--line); }
+  .comp-row .name { color: #cbd5e1; line-height: 1.4; }
+  .comp-row .name small { display: block; color: var(--muted); font-size: 11px; }
+  .comp-row .val { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+  .chip { font-size: 11px; font-weight: 800; padding: 3px 9px; border-radius: 999px; color: #0b0f14; white-space: nowrap; }
+  .warnbox {
+    margin-top: 12px; font-size: 13px; line-height: 1.6; color: #fed7aa;
+    background: rgba(251,146,60,0.1); border: 1px solid rgba(251,146,60,0.35);
+    border-radius: 10px; padding: 10px 12px; display: none;
+  }
+  .warnbox.show { display: block; }
+
+  details.explain {
+    margin-top: 12px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; line-height: 1.7; color: #cbd5e1;
+  }
+  details.explain summary { cursor: pointer; font-weight: 700; color: var(--text); list-style: none; font-size: 13px; }
+  details.explain summary::-webkit-details-marker { display: none; }
+  details.explain summary::before { content: "ⓘ "; color: var(--accent); }
+  details.explain p { margin-top: 8px; }
+  details.explain table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+  details.explain th, details.explain td { border-bottom: 1px solid var(--line); padding: 5px 4px; text-align: left; vertical-align: top; }
+  details.explain th { color: var(--muted); font-weight: 600; }
+  .disclaimer-sm { font-size: 11px; color: var(--muted); margin-top: 12px; line-height: 1.6; }
+
+  footer { text-align: center; padding: 16px 20px 22px; font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); }
+  footer strong { color: #fbbf24; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-mark">FT</div>
+    <div>
+      <h1>Finger Tapping Test</h1>
+      <p>엄지-검지 두드리기 10초 검사 · 속도 · 리듬 · 벌림 폭 변화</p>
+    </div>
+  </div>
+  <div class="live-chip"><span class="dot" id="liveDot"></span><span id="liveText">대기 중</span></div>
+</header>
+
+<main>
+  <!-- ======================= 좌측 ======================= -->
+  <div class="col">
+    <section class="card">
+      <div class="card-title">
+        <span>카메라 화면</span>
+        <span class="hand-status" id="handStatus">카메라 꺼짐</span>
+      </div>
+      <div class="video-frame">
+        <div class="mirror">
+          <video id="video" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+        </div>
+        <div class="placeholder" id="placeholder">
+          <div class="big">✋</div>
+          모델 로딩이 끝나면 오른쪽의 <b>카메라 시작</b> 버튼을 눌러 주세요.<br />
+          손바닥이 카메라를 향하게 하고, 손 전체가 화면에 들어오게 해 주세요.
+        </div>
+        <div class="overlay" id="cdOverlay">
+          <div class="cd-num" id="cdNum">3</div>
+          <div class="cd-msg">엄지와 검지를 <b>최대한 빠르고 크게</b> 붙였다 떼세요</div>
+        </div>
+        <div class="rec-count" id="recCount"><b id="recCountNum">0</b>회</div>
+        <div class="rec-timer" id="recTimer">● 10.0초</div>
+        <div class="rec-hint" id="recHint">빠르고 크게, 일정한 리듬으로!</div>
+        <div class="rec-bar" id="recBar"><div class="rec-bar-fill" id="recBarFill"></div></div>
+      </div>
+      <div class="stage-foot">
+        <span>해상도 <b id="resText">-</b></span>
+        <span>FPS <b id="fpsText">-</b></span>
+        <span>감지된 손 <b id="handedText">-</b></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-title"><span>측정 그래프</span><span id="chartStatus">측정 전</span></div>
+
+      <div class="chart-block">
+        <div class="chart-head">
+          <h3>① 엄지-검지 벌림 폭 (10초)</h3>
+          <span class="verdict" id="ampVerdict"></span>
+        </div>
+        <div class="legend">
+          <span><i style="background:#38bdf8"></i>벌림 폭 (손바닥 길이 대비)</span>
+          <span><i class="dotm" style="background:#2dd4bf"></i>탭마다 가장 크게 벌린 지점</span>
+          <span><i class="dash"></i>벌림 폭 추세선</span>
+        </div>
+        <canvas class="chart" id="waveChart"></canvas>
+        <div class="chart-note">물결 하나가 탭 1회입니다. 추세선이 오른쪽으로 내려가면 시간이 지날수록 손가락을 덜 벌린 것(벌림 폭 감소)입니다.</div>
+      </div>
+
+      <div class="chart-block">
+        <div class="chart-head">
+          <h3>② 탭 속도 변화 (회/초)</h3>
+          <span class="verdict" id="rateVerdict"></span>
+        </div>
+        <div class="legend">
+          <span><i class="dotm" style="background:#a78bfa"></i>탭 사이 순간 속도</span>
+          <span><i class="dotm" style="background:#f87171"></i>멈칫거림 (앞뒤보다 2배 이상 늦은 간격)</span>
+          <span><i class="dash"></i>속도 추세선</span>
+          <span><i style="background:#64748b"></i>평균 속도</span>
+        </div>
+        <canvas class="chart small" id="rateChart"></canvas>
+        <div class="chart-note">점들이 평균선 근처에 고르게 모여 있으면 리듬이 일정한 것입니다. 추세선이 내려가면 점점 느려진 것입니다.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ======================= 우측 ======================= -->
+  <div class="col">
+    <div class="card">
+      <div class="card-title"><span>AI 모델 상태</span></div>
+      <div class="loader-row">
+        <div class="spinner" id="spinner"></div>
+        <span class="status-icon hidden" id="statusIcon"></span>
+        <span class="status-text" id="statusText">손 인식 모델을 불러오는 중…</span>
+      </div>
+      <div class="err-detail" id="errDetail"></div>
+      <div style="margin-top: 14px;"><button class="btn btn-primary" id="camBtn" disabled>카메라 시작</button></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>실시간 벌림 폭</span></div>
+      <div class="live-row">
+        <span class="num" id="liveNum">—</span>
+        <span class="sub" id="liveSub">손을 비추면 표시됩니다</span>
+      </div>
+      <div class="live-bar"><div class="live-bar-fill" id="liveFill"></div></div>
+      <div class="live-note">엄지 끝~검지 끝 거리 ÷ 손바닥 길이(손목~가운뎃손가락 뿌리, 화면의 노란 점선). 0이면 맞닿음, 1.0이면 손바닥 길이만큼 벌어짐. 손 크기와 카메라 거리 차이를 보정한 값입니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span>10초 손가락 두드리기 검사</span></div>
+      <ol class="steps">
+        <li>카메라를 켜고, 검사할 손을 손바닥이 카메라를 향하게 해 <b>손 전체가 화면에 보이게</b> 둡니다. 팔은 책상에 편하게 올려 두세요.</li>
+        <li><b>측정 시작</b>을 누르면 3초 카운트다운 뒤 10초 측정이 시작됩니다.</li>
+        <li>10초 동안 엄지와 검지를 <b>최대한 빠르게, 최대한 크게</b> 붙였다 떼기를 반복하세요. 다른 손가락은 편하게 둡니다.</li>
+        <li>양손을 따로 검사해 비교하면 좋습니다. 통증이 있으면 바로 멈추세요.</li>
+      </ol>
+      <div class="field-row">
+        <span>검사하는 손</span>
+        <select id="handSelect">
+          <option value="auto">자동 감지</option>
+          <option value="오른손">오른손</option>
+          <option value="왼손">왼손</option>
+        </select>
+      </div>
+      <button class="btn btn-test" id="testBtn" disabled>10초 측정 시작</button>
+      <div class="test-msg" id="testMsg">카메라를 켜면 측정을 시작할 수 있습니다.</div>
+    </div>
+
+    <div class="card" id="resultCard">
+      <div class="card-title"><span id="resTitle">검사 결과</span><span id="resTime"></span></div>
+      <div class="res-top">
+        <div class="res-main">
+          <div class="cap">10초 동안 탭 횟수</div>
+          <div class="num" id="resCount">—<small>회</small></div>
+          <div class="sub">평균 속도 <b id="resRate">—</b> 회/초 · 평균 벌림 폭 <b id="resAmp">—</b></div>
+        </div>
+        <div class="grade-pill" id="gradePill">
+          <div class="g" id="gradeNum">참고 등급 —</div>
+          <div class="l" id="gradeLabel">—</div>
+        </div>
+      </div>
+      <div class="res-desc" id="resDesc"></div>
+      <div class="grade-scale" id="gradeScale"></div>
+
+      <div class="comp" id="compTable"></div>
+      <div class="warnbox" id="resWarn"></div>
+
+      <details class="explain">
+        <summary>등급은 어떻게 정해지나요?</summary>
+        <p>임상에서 쓰는 MDS-UPDRS 3.4 손가락 두드리기 항목은 <b>속도, 벌림 폭, 멈칫거림·멈춤, 벌림 폭 감소</b>를 함께 보고, 그중 가장 나쁜 항목을 기준으로 0~4점을 매깁니다. 이 프로그램은 그 구조를 본떠 아래 항목을 각각 0~4로 계산하고, <b>가장 높은 점수를 참고 등급</b>으로 보여 줍니다.</p>
+        <table>
+          <tr><th>항목</th><th>0 (정상 범위)</th><th>1</th><th>2</th><th>3</th></tr>
+          <tr><td>평균 속도</td><td>2.5회/초 이상</td><td>2.0~2.5</td><td>1.5~2.0</td><td>1.0~1.5 (1.0 미만은 4)</td></tr>
+          <tr><td>멈칫거림</td><td>없음</td><td>1~2회</td><td>3~5회</td><td>6회 이상 또는 1초 넘는 멈춤</td></tr>
+          <tr><td>벌림 폭 감소</td><td>15% 미만</td><td>15~25%</td><td>25~40%</td><td>40% 이상</td></tr>
+          <tr><td>속도 저하</td><td>15% 미만</td><td>15~25%</td><td>25~40%</td><td>40% 이상</td></tr>
+          <tr><td>리듬 불규칙 (CV)</td><td>10% 미만</td><td>10~20%</td><td>20~30%</td><td>30% 이상</td></tr>
+        </table>
+        <p>벌림 폭 감소·속도 저하는 <b>처음 1/3 구간 탭 평균과 마지막 1/3 구간 탭 평균</b>을 비교한 값이고, 리듬 불규칙(CV)은 멈칫거림을 뺀 나머지 탭 간격이 들쭉날쭉한 정도(표준편차 ÷ 평균)입니다.</p>
+        <p>속도 기준은 건강한 성인의 엄지-검지 두드리기 주파수가 평균 약 3회/초이고 나이가 많을수록 낮아진다는 연구를 참고했지만, 숫자 구간 자체는 이 프로그램이 정한 값입니다. MDS-UPDRS 원문은 숫자 기준 없이 검사자가 눈으로 보고 판단하며, 공식 검사는 10초가 아니라 10회 두드리기입니다.</p>
+      </details>
+
+      <div class="disclaimer-sm">
+        ※ 참고 등급은 공식 MDS-UPDRS 점수나 진단이 아닙니다. 웹캠 영상(초당 약 30장)으로 추정한 값이라 조명·카메라 각도·손 위치에 따라 달라질 수 있습니다. 같은 조건에서 반복 측정해 변화를 보고, 평가는 담당 의료진과 상의하세요.
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <strong>※ 본 프로그램은 참고 및 운동 보조용 도구이며, 의료 진단 기기가 아닙니다.</strong>
+</footer>
+
+<script type="module">
+  // =====================================================================
+  //  설정
+  // =====================================================================
+  const TASKS_VISION_VERSION = "0.10.14";
+  const VISION_BUNDLE_URL = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}`;
+  const WASM_PATH = `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@${TASKS_VISION_VERSION}/wasm`;
+  const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+
+  const TEST_SECONDS = 10;
+  const COUNTDOWN_SECONDS = 3;
+  const LIVE_DELTA = 0.10;        // 실시간 탭 카운트용 최소 벌림 변화량
+  const LIVE_BAR_MAX = 1.5;
+
+  // 등급 기준 (이 프로그램의 참고값 · 임상 검증 기준 아님)
+  const T = {
+    speed: [2.5, 2.0, 1.5, 1.0],      // 회/초: 이상이면 0,1,2,3 / 그 미만 4
+    decline: [15, 25, 40],            // %: 미만이면 0,1,2 / 이상 3
+    cv: [10, 20, 30],                 // %: 미만이면 0,1,2 / 이상 3
+    hesitationFactor: 2.0,            // 중앙값 간격의 몇 배 이상이면 멈칫거림
+    freezeSec: 1.0                    // 이 시간 이상 간격이면 멈춤(freeze)
+  };
+  const GRADE = [
+    { label: "정상 범위", color: "#34d399" },
+    { label: "경미한 저하", color: "#a3e635" },
+    { label: "경도 저하", color: "#facc15" },
+    { label: "중등도 저하", color: "#fb923c" },
+    { label: "고도 저하", color: "#f87171" }
+  ];
+
+  const HAND_CONNECTIONS = [
+    [0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[5,9],[9,10],[10,11],[11,12],
+    [9,13],[13,14],[14,15],[15,16],[13,17],[17,18],[18,19],[19,20],[0,17]
+  ];
+
+  // =====================================================================
+  //  DOM / 상태
+  // =====================================================================
+  const $ = (id) => document.getElementById(id);
+  const video = $("video");
+  const canvas = $("overlay");
+  const ctx = canvas.getContext("2d");
+
+  let handLandmarker = null, stream = null, running = false, rafId = null;
+  let lastVideoTime = -1, lastTimestamp = 0;
+  let fpsFrames = 0, fpsLast = performance.now();
+  let currentHand = "";
+
+  const test = { state: "idle", t0: 0, samples: [], handVotes: {}, live: null };
+  let lastAnalysis = null;
+
+  // =====================================================================
+  //  공통 UI
+  // =====================================================================
+  function setStatus(type, message, detail = "") {
+    $("statusText").textContent = message;
+    $("statusText").className = "status-text" + (type === "ok" ? " ok" : type === "err" ? " err" : "");
+    $("spinner").classList.toggle("hidden", type !== "loading");
+    $("statusIcon").classList.toggle("hidden", type === "loading");
+    $("statusIcon").textContent = type === "ok" ? "✅" : type === "err" ? "⚠️" : "";
+    $("errDetail").textContent = detail;
+    $("errDetail").classList.toggle("show", !!detail);
+  }
+  function setLive(state, text) {
+    $("liveDot").className = "dot" + (state === "on" ? " on" : state === "rec" ? " rec" : "");
+    $("liveText").textContent = text;
+  }
+  function setTestMsg(text, warn = false) {
+    $("testMsg").textContent = text;
+    $("testMsg").className = "test-msg" + (warn ? " warn" : "");
+  }
+  function setHandStatus(found, label = "") {
+    const el = $("handStatus");
+    if (found) { el.textContent = "손 감지됨" + (label ? ` · ${label}` : ""); el.className = "hand-status found"; }
+    else { el.textContent = "손을 화면에 보여 주세요"; el.className = "hand-status lost"; }
+  }
+
+  // =====================================================================
+  //  1) 모델 로딩 (GPU → 실패 시 CPU)
+  // =====================================================================
+  async function initModel() {
+    setStatus("loading", "손 인식 모델을 불러오는 중…");
+    if (location.protocol === "file:") {
+      $("errDetail").textContent = "현재 파일을 더블클릭(file://)으로 열었습니다.\n문제가 생기면 VS Code Live Server 또는 'python -m http.server'로 열어 주세요.";
+      $("errDetail").classList.add("show");
+    }
+    let vision;
+    try {
+      vision = await import(VISION_BUNDLE_URL);
+    } catch (e) {
+      console.error(e);
+      setStatus("err", "라이브러리를 불러오지 못했습니다.",
+        "MediaPipe 라이브러리(CDN) 다운로드에 실패했습니다.\n• 인터넷 연결을 확인해 주세요.\n• 회사/학교 네트워크라면 cdn.jsdelivr.net 접근이 막혔을 수 있습니다.\n\n오류: " + (e?.message || e));
+      return;
+    }
+    const { HandLandmarker, FilesetResolver } = vision;
+    let fileset;
+    try {
+      fileset = await FilesetResolver.forVisionTasks(WASM_PATH);
+    } catch (e) {
+      console.error(e);
+      setStatus("err", "WASM 엔진 로딩 실패", "WebAssembly 파일을 불러오지 못했습니다.\n최신 Chrome / Edge 브라우저에서 다시 시도해 주세요.\n\n오류: " + (e?.message || e));
+      return;
+    }
+    const options = (delegate) => ({
+      baseOptions: { modelAssetPath: MODEL_URL, delegate },
+      runningMode: "VIDEO", numHands: 1,
+      minHandDetectionConfidence: 0.5, minHandPresenceConfidence: 0.5, minTrackingConfidence: 0.5
+    });
+    try {
+      handLandmarker = await HandLandmarker.createFromOptions(fileset, options("GPU"));
+      setStatus("ok", "모델 준비 완료 (GPU 가속)");
+    } catch (gpuErr) {
+      console.warn("GPU 초기화 실패, CPU로 재시도합니다.", gpuErr);
+      try {
+        handLandmarker = await HandLandmarker.createFromOptions(fileset, options("CPU"));
+        setStatus("ok", "모델 준비 완료 (CPU 모드)");
+      } catch (cpuErr) {
+        console.error(cpuErr);
+        setStatus("err", "손 인식 모델 로딩 실패",
+          "모델 파일(storage.googleapis.com)을 받지 못했습니다.\n• 인터넷 연결 또는 방화벽을 확인해 주세요.\n• 페이지를 새로고침해 다시 시도해 보세요.\n\n오류: " + (cpuErr?.message || cpuErr));
+        return;
+      }
+    }
+    if (location.protocol === "file:") $("errDetail").classList.remove("show");
+    $("camBtn").disabled = false;
+  }
+
+  // =====================================================================
+  //  2) 카메라
+  // =====================================================================
+  async function startCamera() {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setStatus("err", "카메라를 사용할 수 없습니다.",
+        "카메라는 https:// 또는 http://localhost(127.0.0.1) 주소에서만 동작합니다.\nVS Code Live Server나 'python -m http.server'로 열어 주세요.");
+      return;
+    }
+    const camBtn = $("camBtn");
+    camBtn.disabled = true;
+    camBtn.textContent = "카메라 연결 중…";
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 60 } },
+        audio: false
+      });
+    } catch (e) {
+      console.error(e);
+      let msg = "카메라를 켤 수 없습니다.";
+      if (e.name === "NotAllowedError") msg = "카메라 권한이 거부되었습니다.\n주소창 왼쪽 자물쇠 아이콘 → 카메라 '허용'으로 바꾼 뒤 다시 눌러 주세요.";
+      else if (e.name === "NotFoundError") msg = "연결된 카메라를 찾지 못했습니다.";
+      else if (e.name === "NotReadableError") msg = "다른 프로그램(Zoom, Teams 등)이 카메라를 사용 중입니다. 종료 후 다시 시도해 주세요.";
+      setStatus("err", "카메라 오류", msg + "\n\n오류: " + e.name);
+      camBtn.disabled = false;
+      camBtn.textContent = "카메라 시작";
+      return;
+    }
+    video.srcObject = stream;
+    await new Promise((r) => (video.readyState >= 1 ? r() : (video.onloadedmetadata = () => r())));
+    await video.play();
+    syncCanvasSize();
+    running = true;
+    lastVideoTime = -1;
+
+    $("placeholder").style.display = "none";
+    camBtn.disabled = false;
+    camBtn.textContent = "카메라 정지";
+    camBtn.classList.add("stop");
+    $("testBtn").disabled = false;
+    setTestMsg("손 전체가 화면에 보이면 측정을 시작하세요.");
+    setLive("on", "카메라 켜짐");
+    setHandStatus(false);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stopCamera() {
+    if (test.state !== "idle") abortTest("카메라가 꺼져 측정이 취소되었습니다.");
+    running = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    if (stream) stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+    video.srcObject = null;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    $("placeholder").style.display = "";
+    const camBtn = $("camBtn");
+    camBtn.textContent = "카메라 시작";
+    camBtn.classList.remove("stop");
+    $("handStatus").textContent = "카메라 꺼짐";
+    $("handStatus").className = "hand-status";
+    $("fpsText").textContent = "-";
+    $("testBtn").disabled = true;
+    if (test.state === "idle") setTestMsg("카메라를 켜면 측정을 시작할 수 있습니다.");
+    resetLive();
+    setLive("off", "대기 중");
+  }
+
+  function syncCanvasSize() {
+    const w = video.videoWidth, h = video.videoHeight;
+    if (!w || !h) return;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w; canvas.height = h;
+      $("resText").textContent = `${w}×${h}`;
+    }
+  }
+
+  // =====================================================================
+  //  3) 실시간 표시 / 손 그리기
+  // =====================================================================
+  function dist3D(a, b, w, h) {
+    const dx = (a.x - b.x) * w, dy = (a.y - b.y) * h, dz = (a.z - b.z) * w;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  function updateLive(v) {
+    $("liveNum").textContent = v.toFixed(2);
+    $("liveSub").textContent = v < 0.25 ? "손가락 끝이 맞닿음" : `손바닥 길이의 ${Math.round(v * 100)}%만큼 벌어짐`;
+    $("liveFill").style.width = Math.min(100, (v / LIVE_BAR_MAX) * 100) + "%";
+  }
+  function resetLive() {
+    $("liveNum").textContent = "—";
+    $("liveSub").textContent = "손을 비추면 표시됩니다";
+    $("liveFill").style.width = "0%";
+  }
+
+  function drawHand(lm) {
+    const w = canvas.width, h = canvas.height;
+    const px = (p) => [p.x * w, p.y * h];
+    const unit = Math.max(2, w / 320);
+    ctx.lineCap = "round";
+    ctx.lineWidth = unit * 1.4;
+    ctx.strokeStyle = "rgba(226,232,240,0.7)";
+    ctx.beginPath();
+    for (const [i, j] of HAND_CONNECTIONS) {
+      const [x1, y1] = px(lm[i]); const [x2, y2] = px(lm[j]);
+      ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    }
+    ctx.stroke();
+    const [wx, wy] = px(lm[0]); const [mx, my] = px(lm[9]);
+    ctx.setLineDash([unit * 3, unit * 3]);
+    ctx.lineWidth = unit;
+    ctx.strokeStyle = "rgba(250,204,21,0.85)";
+    ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(mx, my); ctx.stroke();
+    ctx.setLineDash([]);
+    for (let k = 0; k < lm.length; k++) {
+      const [x, y] = px(lm[k]);
+      ctx.beginPath(); ctx.arc(x, y, unit * 1.6, 0, Math.PI * 2);
+      ctx.fillStyle = (k === 0 || k === 9) ? "#facc15" : "#94a3b8"; ctx.fill();
+    }
+    const [tx, ty] = px(lm[4]); const [ix, iy] = px(lm[8]);
+    ctx.lineWidth = unit * 2.4;
+    ctx.strokeStyle = "#38bdf8";
+    ctx.shadowColor = "#38bdf8"; ctx.shadowBlur = unit * 5;
+    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(ix, iy); ctx.stroke();
+    ctx.shadowBlur = 0;
+    for (const [x, y] of [[tx, ty], [ix, iy]]) {
+      ctx.beginPath(); ctx.arc(x, y, unit * 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#38bdf8"; ctx.fill();
+      ctx.lineWidth = unit; ctx.strokeStyle = "#0b0f14"; ctx.stroke();
+    }
+  }
+
+  // =====================================================================
+  //  4) 탭 검출 (봉우리·골짜기 검출, 히스테리시스 방식)
+  //     벌림 폭이 최고점에서 delta 이상 내려가면 '벌림 봉우리',
+  //     최저점에서 delta 이상 올라가면 '맞닿음 골짜기' = 탭 1회
+  // =====================================================================
+  function makePeakDetector(delta) {
+    return { delta, mn: Infinity, mx: -Infinity, mnT: 0, mxT: 0, lookForMax: true, peaks: [], valleys: [] };
+  }
+  function feedPeak(d, t, v) {
+    if (v > d.mx) { d.mx = v; d.mxT = t; }
+    if (v < d.mn) { d.mn = v; d.mnT = t; }
+    if (d.lookForMax) {
+      if (v < d.mx - d.delta) {
+        d.peaks.push({ t: d.mxT, v: d.mx });
+        d.mn = v; d.mnT = t; d.lookForMax = false;
+      }
+    } else if (v > d.mn + d.delta) {
+      d.valleys.push({ t: d.mnT, v: d.mn });
+      d.mx = v; d.mxT = t; d.lookForMax = true;
+    }
+  }
+
+  const mean = (a) => (a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0);
+  const sd = (a) => { if (a.length < 2) return 0; const m = mean(a); return Math.sqrt(a.reduce((s, x) => s + (x - m) ** 2, 0) / (a.length - 1)); };
+  const median = (a) => { if (!a.length) return 0; const s = [...a].sort((x, y) => x - y); const k = Math.floor(s.length / 2); return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2; };
+  function linreg(xs, ys) {
+    const n = xs.length;
+    if (n < 2) return null;
+    const mx = mean(xs), my = mean(ys);
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) { num += (xs[i] - mx) * (ys[i] - my); den += (xs[i] - mx) ** 2; }
+    const slope = den ? num / den : 0;
+    return { slope, intercept: my - slope * mx };
+  }
+  const scoreLow = (v, cuts) => { for (let i = 0; i < cuts.length; i++) if (v < cuts[i]) return i; return cuts.length; };
+
+  function analyze(samples) {
+    const valid = samples.filter((s) => s.v != null);
+    const coverage = samples.length ? valid.length / samples.length : 0;
+    const fps = samples.length / TEST_SECONDS;
+
+    // 3점 이동 평균 (끊긴 구간은 건너뜀)
+    const sm = valid.map((s, i) => {
+      let sum = s.v, n = 1;
+      const a = valid[i - 1], b = valid[i + 1];
+      if (a && s.t - a.t < 0.15) { sum += a.v; n++; }
+      if (b && b.t - s.t < 0.15) { sum += b.v; n++; }
+      return { t: s.t, v: sum / n };
+    });
+
+    // 사람마다 벌림 폭이 달라 delta를 신호 범위에 맞춰 조정
+    const sorted = sm.map((s) => s.v).sort((x, y) => x - y);
+    const q = (p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor(p * (sorted.length - 1)))] : 0);
+    const delta = Math.max(0.06, 0.3 * (q(0.9) - q(0.1)));
+    const det = makePeakDetector(delta);
+    sm.forEach((s) => feedPeak(det, s.t, s.v));
+
+    const taps = det.valleys;                        // 맞닿은 순간 = 탭 1회
+    const n = taps.length;
+    const amps = taps.map((_, i) => det.peaks[i]);   // 각 탭 직전에 가장 크게 벌린 지점
+    const tapTimes = taps.map((v) => v.t);
+    const itis = [];
+    for (let i = 1; i < n; i++) itis.push({ t: (tapTimes[i] + tapTimes[i - 1]) / 2, dt: tapTimes[i] - tapTimes[i - 1] });
+
+    const dts = itis.map((x) => x.dt);
+    const medDt = median(dts);
+    const meanDt = mean(dts);
+    const rate = meanDt ? 1 / meanDt : 0;
+    itis.forEach((x) => {
+      x.rate = 1 / x.dt;
+      x.hes = medDt > 0 && x.dt >= T.hesitationFactor * medDt;
+      x.freeze = x.dt >= T.freezeSec && medDt > 0 && x.dt >= 3 * medDt;
+    });
+    const hesCount = itis.filter((x) => x.hes).length;
+    const hasFreeze = itis.some((x) => x.freeze);
+    // 멈칫거림은 따로 세므로, 리듬 규칙성(CV)은 멈칫거림을 뺀 나머지 간격으로 계산 (이중 감점 방지)
+    const regular = itis.filter((x) => !x.hes).map((x) => x.dt);
+    const cv = regular.length >= 2 ? (sd(regular) / mean(regular)) * 100 : 0;
+
+    // 처음 1/3 vs 마지막 1/3 비교
+    let ampDecline = null, slowing = null;
+    if (amps.length >= 6) {
+      const k = Math.floor(amps.length / 3);
+      const a1 = mean(amps.slice(0, k).map((p) => p.v)), a2 = mean(amps.slice(-k).map((p) => p.v));
+      ampDecline = a1 > 0 ? ((a1 - a2) / a1) * 100 : 0;
+    }
+    if (itis.length >= 6) {
+      const k = Math.floor(itis.length / 3);
+      const r1 = mean(itis.slice(0, k).map((x) => x.rate)), r2 = mean(itis.slice(-k).map((x) => x.rate));
+      slowing = r1 > 0 ? ((r1 - r2) / r1) * 100 : 0;
+    }
+
+    const ampTrend = linreg(amps.map((p) => p.t), amps.map((p) => p.v));
+    const rateTrend = linreg(itis.map((x) => x.t), itis.map((x) => x.rate));
+
+    // 항목별 점수
+    const sSpeed = scoreLow(-rate, T.speed.map((c) => -c));     // rate가 클수록 0
+    const sHes = hasFreeze || hesCount > 5 ? 3 : hesCount >= 3 ? 2 : hesCount >= 1 ? 1 : 0;
+    const sDec = ampDecline == null ? 0 : scoreLow(Math.max(0, ampDecline), T.decline);
+    const sSlow = slowing == null ? 0 : scoreLow(Math.max(0, slowing), T.decline);
+    const sCv = itis.length >= 4 ? scoreLow(cv, T.cv) : 0;
+
+    let grade = Math.max(sSpeed, sHes, sDec, sSlow, sCv);
+    let barely = false;
+    if (n < 3) { grade = 4; barely = true; }
+
+    return {
+      samples, sm, det, taps, amps, itis, n, rate, cv, medDt, hesCount, hasFreeze,
+      ampDecline, slowing, ampTrend, rateTrend, coverage, fps,
+      meanAmp: mean(amps.map((p) => p.v)),
+      scores: { speed: sSpeed, hes: sHes, dec: sDec, slow: sSlow, cv: sCv },
+      grade, barely
+    };
+  }
+
+  // =====================================================================
+  //  5) 그래프 (Canvas 직접 그리기)
+  // =====================================================================
+  function prepChart(cv) {
+    const dpr = window.devicePixelRatio || 1;
+    const r = cv.getBoundingClientRect();
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+    const c = cv.getContext("2d");
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    c.clearRect(0, 0, r.width, r.height);
+    return { c, w: r.width, h: r.height };
+  }
+
+  function drawAxes(c, box, yMax, yStep, yFmt) {
+    c.font = "11px system-ui, sans-serif";
+    c.fillStyle = "#8b98a9";
+    c.strokeStyle = "#1e2835";
+    c.lineWidth = 1;
+    c.textAlign = "right"; c.textBaseline = "middle";
+    for (let y = 0; y <= yMax + 1e-9; y += yStep) {
+      const py = box.y + box.h - (y / yMax) * box.h;
+      c.beginPath(); c.moveTo(box.x, py); c.lineTo(box.x + box.w, py); c.stroke();
+      c.fillText(yFmt(y), box.x - 6, py);
+    }
+    c.textAlign = "center"; c.textBaseline = "top";
+    for (let s = 0; s <= TEST_SECONDS; s += 2) {
+      const px = box.x + (s / TEST_SECONDS) * box.w;
+      c.fillText(s + "초", px, box.y + box.h + 6);
+    }
+  }
+
+  function emptyChart(cv, text) {
+    const { c, w, h } = prepChart(cv);
+    c.fillStyle = "#5b6878";
+    c.font = "13px system-ui, sans-serif";
+    c.textAlign = "center"; c.textBaseline = "middle";
+    c.fillText(text, w / 2, h / 2);
+  }
+
+  function drawWave(samples, an) {
+    const cv = $("waveChart");
+    if (!samples.length) { emptyChart(cv, "측정을 시작하면 여기에 벌림 폭 그래프가 그려집니다"); return; }
+    const { c, w, h } = prepChart(cv);
+    const box = { x: 40, y: 10, w: w - 52, h: h - 36 };
+    const vmax = Math.max(1.0, ...samples.filter((s) => s.v != null).map((s) => s.v));
+    const yMax = Math.ceil(vmax * 1.05 / 0.5) * 0.5;
+    drawAxes(c, box, yMax, 0.5, (y) => y.toFixed(1));
+    const X = (t) => box.x + (t / TEST_SECONDS) * box.w;
+    const Y = (v) => box.y + box.h - (v / yMax) * box.h;
+
+    // 벌림 폭 선 (손이 사라진 구간은 끊어서 그림)
+    c.strokeStyle = "#38bdf8"; c.lineWidth = 2; c.lineJoin = "round";
+    c.beginPath();
+    let pen = false;
+    for (const s of samples) {
+      if (s.v == null) { pen = false; continue; }
+      if (!pen) { c.moveTo(X(s.t), Y(s.v)); pen = true; } else c.lineTo(X(s.t), Y(s.v));
+    }
+    c.stroke();
+
+    if (an) {
+      for (const p of an.amps) {
+        c.beginPath(); c.arc(X(p.t), Y(p.v), 4, 0, Math.PI * 2);
+        c.fillStyle = "#2dd4bf"; c.fill();
+        c.lineWidth = 1.5; c.strokeStyle = "#0b0f14"; c.stroke();
+      }
+      if (an.ampTrend && an.amps.length >= 2) {
+        const t1 = an.amps[0].t, t2 = an.amps[an.amps.length - 1].t;
+        c.setLineDash([6, 4]); c.strokeStyle = "#facc15"; c.lineWidth = 2;
+        c.beginPath();
+        c.moveTo(X(t1), Y(an.ampTrend.intercept + an.ampTrend.slope * t1));
+        c.lineTo(X(t2), Y(an.ampTrend.intercept + an.ampTrend.slope * t2));
+        c.stroke(); c.setLineDash([]);
+      }
+    }
+  }
+
+  function drawRate(an) {
+    const cv = $("rateChart");
+    if (!an || an.itis.length < 2) {
+      emptyChart(cv, an ? "탭이 너무 적어 속도 그래프를 그릴 수 없습니다" : "측정이 끝나면 탭 속도 변화가 표시됩니다");
+      return;
+    }
+    const { c, w, h } = prepChart(cv);
+    const box = { x: 40, y: 10, w: w - 52, h: h - 36 };
+    const rmax = Math.max(4, ...an.itis.map((x) => x.rate));
+    const yMax = Math.ceil(rmax * 1.1);
+    const step = yMax > 8 ? 2 : 1;
+    drawAxes(c, box, yMax, step, (y) => y.toFixed(0));
+    const X = (t) => box.x + (t / TEST_SECONDS) * box.w;
+    const Y = (v) => box.y + box.h - (Math.min(v, yMax) / yMax) * box.h;
+
+    // 평균선
+    c.strokeStyle = "#64748b"; c.lineWidth = 1.5;
+    c.beginPath(); c.moveTo(box.x, Y(an.rate)); c.lineTo(box.x + box.w, Y(an.rate)); c.stroke();
+
+    // 연결선 + 점
+    c.strokeStyle = "rgba(167,139,250,0.55)"; c.lineWidth = 1.5;
+    c.beginPath();
+    an.itis.forEach((x, i) => (i ? c.lineTo(X(x.t), Y(x.rate)) : c.moveTo(X(x.t), Y(x.rate))));
+    c.stroke();
+    for (const x of an.itis) {
+      c.beginPath(); c.arc(X(x.t), Y(x.rate), x.hes ? 5 : 4, 0, Math.PI * 2);
+      c.fillStyle = x.hes ? "#f87171" : "#a78bfa"; c.fill();
+      c.lineWidth = 1.5; c.strokeStyle = "#0b0f14"; c.stroke();
+    }
+    if (an.rateTrend) {
+      const t1 = an.itis[0].t, t2 = an.itis[an.itis.length - 1].t;
+      c.setLineDash([6, 4]); c.strokeStyle = "#facc15"; c.lineWidth = 2;
+      c.beginPath();
+      c.moveTo(X(t1), Y(an.rateTrend.intercept + an.rateTrend.slope * t1));
+      c.lineTo(X(t2), Y(an.rateTrend.intercept + an.rateTrend.slope * t2));
+      c.stroke(); c.setLineDash([]);
+    }
+  }
+
+  function redrawCharts() {
+    if (test.state === "running") drawWave(test.samples, null);
+    else if (lastAnalysis) { drawWave(lastAnalysis.samples, lastAnalysis); drawRate(lastAnalysis); }
+    else { drawWave([], null); drawRate(null); }
+  }
+
+  // =====================================================================
+  //  6) 검사 진행
+  // =====================================================================
+  function startTest() {
+    if (!running) return;
+    test.state = "countdown";
+    test.t0 = performance.now();
+    test.samples = [];
+    test.handVotes = {};
+    test.live = makePeakDetector(LIVE_DELTA);
+    lastAnalysis = null;
+    $("resultCard").classList.remove("show");
+    $("ampVerdict").textContent = ""; $("rateVerdict").textContent = "";
+    $("chartStatus").textContent = "측정 준비 중";
+    redrawCharts();
+
+    $("cdNum").textContent = COUNTDOWN_SECONDS;
+    $("cdOverlay").classList.add("show");
+    const btn = $("testBtn");
+    btn.textContent = "측정 취소"; btn.classList.add("cancel");
+    $("handSelect").disabled = true;
+    setTestMsg("곧 측정이 시작됩니다…");
+    setLive("rec", "측정 준비");
+  }
+
+  function beginRecording(now) {
+    test.state = "running";
+    test.t0 = now;
+    $("cdOverlay").classList.remove("show");
+    ["recTimer", "recBar", "recHint", "recCount"].forEach((id) => $(id).classList.add("show"));
+    $("recCountNum").textContent = "0";
+    $("chartStatus").textContent = "측정 중 · 실시간";
+    setTestMsg(`측정 중… ${TEST_SECONDS}초 동안 빠르고 크게 두드리세요.`);
+    setLive("rec", "측정 중");
+  }
+
+  function tickTest(now) {
+    if (test.state === "countdown") {
+      const left = COUNTDOWN_SECONDS - (now - test.t0) / 1000;
+      if (left <= 0) beginRecording(now);
+      else $("cdNum").textContent = Math.ceil(left);
+    } else if (test.state === "running") {
+      const el = (now - test.t0) / 1000;
+      $("recTimer").textContent = `● ${Math.max(0, TEST_SECONDS - el).toFixed(1)}초`;
+      $("recBarFill").style.width = Math.min(100, (el / TEST_SECONDS) * 100) + "%";
+      if (el >= TEST_SECONDS) finishTest();
+    }
+  }
+
+  function clearTestUI() {
+    $("cdOverlay").classList.remove("show");
+    ["recTimer", "recBar", "recHint", "recCount"].forEach((id) => $(id).classList.remove("show"));
+    $("recBarFill").style.width = "0%";
+    const btn = $("testBtn");
+    btn.textContent = "다시 측정하기"; btn.classList.remove("cancel");
+    btn.disabled = !running;
+    $("handSelect").disabled = false;
+    setLive(running ? "on" : "off", running ? "카메라 켜짐" : "대기 중");
+  }
+
+  function abortTest(message) {
+    test.state = "idle";
+    clearTestUI();
+    $("testBtn").textContent = "10초 측정 시작";
+    $("chartStatus").textContent = "측정 취소됨";
+    setTestMsg(message, true);
+    redrawCharts();
+  }
+
+  function finishTest() {
+    test.state = "idle";
+    clearTestUI();
+    const samples = test.samples.filter((s) => s.t <= TEST_SECONDS);
+    const validCount = samples.filter((s) => s.v != null).length;
+    if (validCount < 30) {
+      $("chartStatus").textContent = "측정 실패";
+      setTestMsg("측정 중 손이 거의 감지되지 않았습니다. 손 전체가 화면에 보이게 하고 다시 측정해 주세요.", true);
+      lastAnalysis = null;
+      redrawCharts();
+      return;
+    }
+    let hand = $("handSelect").value;
+    if (hand === "auto") {
+      const v = Object.entries(test.handVotes).sort((a, b) => b[1] - a[1]);
+      hand = v.length ? v[0][0] : "미확인";
+    }
+    const an = analyze(samples);
+    an.hand = hand;
+    an.time = new Date();
+    lastAnalysis = an;
+    $("chartStatus").textContent = `${hand} · ${formatTime(an.time)}`;
+    redrawCharts();
+    showResult(an);
+    setTestMsg("측정이 끝났습니다. 결과와 그래프를 확인하세요.");
+  }
+
+  // =====================================================================
+  //  7) 결과 표시
+  // =====================================================================
+  const formatTime = (d) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const pct = (v) => (v == null ? "—" : `${v >= 0 ? "" : "+"}${Math.abs(v).toFixed(0)}%`);
+
+  function changeText(v, kind) {
+    if (v == null) return "탭 수가 적어 계산 불가";
+    if (v >= 15) return kind === "amp" ? `후반에 ${v.toFixed(0)}% 좁아짐` : `후반에 ${v.toFixed(0)}% 느려짐`;
+    if (v <= -15) return kind === "amp" ? `후반에 ${Math.abs(v).toFixed(0)}% 넓어짐` : `후반에 ${Math.abs(v).toFixed(0)}% 빨라짐`;
+    return kind === "amp" ? "처음과 끝이 비슷하게 유지됨" : "일정한 속도를 유지함";
+  }
+
+  function chip(score) {
+    return `<span class="chip" style="background:${GRADE[score].color}">${score === 0 ? "양호" : score + "단계"}</span>`;
+  }
+
+  function showResult(an) {
+    const g = GRADE[an.grade];
+    const card = $("resultCard");
+    card.style.borderColor = g.color;
+    $("resTitle").textContent = `검사 결과 · ${an.hand}`;
+    $("resTime").textContent = formatTime(an.time);
+    $("resCount").innerHTML = `${an.n}<small>회</small>`;
+    $("resRate").textContent = an.rate ? an.rate.toFixed(1) : "—";
+    $("resAmp").textContent = an.amps.length ? an.meanAmp.toFixed(2) : "—";
+    $("gradePill").style.background = g.color;
+    $("gradeNum").textContent = `참고 등급 ${an.grade} / 4`;
+    $("gradeLabel").textContent = g.label;
+
+    const scale = $("gradeScale");
+    scale.innerHTML = "";
+    GRADE.forEach((x, i) => {
+      const d = document.createElement("div");
+      d.innerHTML = `${i}<br>${x.label}`;
+      if (i === an.grade) { d.classList.add("on"); d.style.background = x.color; }
+      scale.appendChild(d);
+    });
+
+    // 설명 문장
+    const s = an.scores;
+    const issues = [];
+    if (s.speed) issues.push(`평균 속도가 ${an.rate.toFixed(1)}회/초로 느린 편`);
+    if (s.hes) issues.push(an.hasFreeze ? "중간에 1초 넘게 멈춘 구간이 있음" : `리듬이 ${an.hesCount}번 끊김(멈칫거림)`);
+    if (s.dec) issues.push(`시간이 지날수록 벌림 폭이 ${an.ampDecline.toFixed(0)}% 좁아짐`);
+    if (s.slow) issues.push(`후반으로 갈수록 속도가 ${an.slowing.toFixed(0)}% 느려짐`);
+    if (s.cv) issues.push(`탭 간격이 고르지 않음(CV ${an.cv.toFixed(0)}%)`);
+
+    let desc;
+    if (an.barely) {
+      desc = "10초 동안 탭이 거의 감지되지 않았습니다. 실제로 동작이 어려운 상태일 수 있지만, 손이 화면에서 벗어났거나 움직임이 너무 작았을 수도 있습니다. 자세를 확인하고 한 번 더 측정해 보세요.";
+    } else if (an.grade === 0) {
+      desc = `10초 동안 <b>${an.n}회</b>, 평균 <b>${an.rate.toFixed(1)}회/초</b>로 두드렸습니다. 속도·리듬·벌림 폭이 끝까지 고르게 유지되어, 손가락 운동 조절 능력이 <b>정상 범위</b>로 보입니다.`;
+    } else {
+      const advice = [
+        "",
+        "작은 변화이므로 같은 조건에서 반복 측정해 추세를 보세요.",
+        "같은 조건에서 반복 측정해 변화를 기록하고, 담당 의료진과 결과를 공유해 보세요.",
+        "운동 조절에 뚜렷한 저하가 보입니다. 담당 의료진·치료사와 상의하는 것이 좋습니다.",
+        "동작 수행이 많이 어려운 상태로 보입니다. 담당 의료진·치료사와 상의하세요."
+      ][an.grade];
+      desc = `10초 동안 <b>${an.n}회</b>, 평균 <b>${an.rate.toFixed(1)}회/초</b>로 두드렸습니다. ${issues.join(", ")}. ${advice}`;
+    }
+    $("resDesc").innerHTML = desc;
+
+    // 항목별 표
+    $("compTable").innerHTML = `
+      <div class="comp-row"><div class="name">평균 속도<small>운동 속도</small></div><div class="val">${an.rate ? an.rate.toFixed(1) + " 회/초" : "—"}</div>${chip(s.speed)}</div>
+      <div class="comp-row"><div class="name">속도 변화<small>처음 1/3 → 마지막 1/3</small></div><div class="val">${changeText(an.slowing, "rate")}</div>${chip(s.slow)}</div>
+      <div class="comp-row"><div class="name">벌림 폭 변화<small>피로도 · 진폭 감소</small></div><div class="val">${changeText(an.ampDecline, "amp")}</div>${chip(s.dec)}</div>
+      <div class="comp-row"><div class="name">리듬 규칙성<small>탭 간격 변동계수(CV)</small></div><div class="val">${an.itis.length >= 4 ? an.cv.toFixed(0) + "%" : "—"}</div>${chip(s.cv)}</div>
+      <div class="comp-row"><div class="name">멈칫거림 · 멈춤<small>리듬이 끊긴 횟수</small></div><div class="val">${an.hesCount}회${an.hasFreeze ? " (멈춤 있음)" : ""}</div>${chip(s.hes)}</div>`;
+
+    // 그래프 판정 문구
+    $("ampVerdict").textContent = changeText(an.ampDecline, "amp");
+    $("ampVerdict").style.color = GRADE[s.dec].color;
+    $("rateVerdict").textContent = `평균 ${an.rate ? an.rate.toFixed(1) : "—"}회/초 · ${changeText(an.slowing, "rate")}`;
+    $("rateVerdict").style.color = GRADE[Math.max(s.slow, s.hes)].color;
+
+    // 측정 품질 경고
+    const warns = [];
+    if (an.coverage < 0.8) warns.push(`⚠ 측정 시간의 ${Math.round(an.coverage * 100)}%만 손이 감지되었습니다. 끊긴 구간 때문에 탭 횟수가 적게 세어졌을 수 있습니다.`);
+    if (an.fps < 20) warns.push(`⚠ 카메라 처리 속도가 초당 ${an.fps.toFixed(0)}장으로 낮아, 빠른 탭은 놓칠 수 있습니다. 다른 프로그램을 닫거나 밝은 곳에서 다시 측정해 보세요.`);
+    if (an.amps.length && an.meanAmp < 0.3 && !an.barely) warns.push("⚠ 손가락을 벌리는 폭이 작게 측정되었습니다. 검사는 '최대한 크게' 벌려야 정확합니다.");
+    $("resWarn").innerHTML = warns.join("<br>");
+    $("resWarn").classList.toggle("show", warns.length > 0);
+
+    card.classList.add("show");
+    card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  // =====================================================================
+  //  8) 추적 루프
+  // =====================================================================
+  function loop() {
+    if (!running) return;
+    rafId = requestAnimationFrame(loop);
+    const now = performance.now();
+    tickTest(now);
+    if (!running || video.readyState < 2) return;
+    syncCanvasSize();
+    if (video.currentTime === lastVideoTime) return;
+    lastVideoTime = video.currentTime;
+
+    let ts = now;
+    if (ts <= lastTimestamp) ts = lastTimestamp + 1;
+    lastTimestamp = ts;
+
+    let result;
+    try { result = handLandmarker.detectForVideo(video, ts); }
+    catch (e) { console.error("추론 오류:", e); return; }
+
+    fpsFrames++;
+    if (now - fpsLast >= 1000) {
+      $("fpsText").textContent = Math.round((fpsFrames * 1000) / (now - fpsLast));
+      fpsFrames = 0; fpsLast = now;
+    }
+
+    const recording = test.state === "running";
+    const t = (now - test.t0) / 1000;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (!result?.landmarks?.length) {
+      setHandStatus(false);
+      $("handedText").textContent = "-";
+      resetLive();
+      if (recording) {
+        test.samples.push({ t, v: null });
+        $("recHint").textContent = "손이 보이지 않아요 · 손 전체를 화면에 비춰 주세요";
+        drawWave(test.samples, null);
+      }
+      return;
+    }
+
+    const lm = result.landmarks[0];
+    const w = canvas.width, h = canvas.height;
+    const palm = dist3D(lm[0], lm[9], w, h);
+    if (palm < 1e-3) return;
+    const v = dist3D(lm[4], lm[8], w, h) / palm;
+
+    // MediaPipe 손 구분은 셀카(좌우 반전) 이미지 기준 → 원본 영상이므로 라벨을 뒤집어 사용
+    const cat = result.handedness?.[0]?.[0] || result.handednesses?.[0]?.[0];
+    currentHand = cat?.categoryName === "Left" ? "오른손" : cat?.categoryName === "Right" ? "왼손" : "";
+
+    if (recording) {
+      test.samples.push({ t, v });
+      if (currentHand) test.handVotes[currentHand] = (test.handVotes[currentHand] || 0) + 1;
+      feedPeak(test.live, t, v);
+      $("recCountNum").textContent = test.live.valleys.length;
+      $("recHint").textContent = "빠르고 크게, 일정한 리듬으로!";
+      drawWave(test.samples, null);
+    }
+
+    setHandStatus(true, currentHand);
+    $("handedText").textContent = currentHand || "-";
+    drawHand(lm);
+    updateLive(v);
+  }
+
+  // =====================================================================
+  //  이벤트 / 시작
+  // =====================================================================
+  $("camBtn").addEventListener("click", () => (running ? stopCamera() : startCamera()));
+  $("testBtn").addEventListener("click", () => (test.state === "idle" ? startTest() : abortTest("측정을 취소했습니다.")));
+  let resizeTimer = null;
+  window.addEventListener("resize", () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(redrawCharts, 120); });
+  window.addEventListener("beforeunload", () => { if (stream) stream.getTracks().forEach((t) => t.stop()); });
+
+  redrawCharts();
+  initModel();
+</script>
+</body>
+</html>
